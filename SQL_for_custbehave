@@ -1,0 +1,73 @@
+with d as(SELECT distinct asiakastunnisteigs, 
+
+sum(case when tuotehierarkiataso2 IN ('Lotto') then laskennallinenpelikateeur else null end)/sum(laskennallinenpelikateeur) lotto,
+
+sum(case when tuotehierarkiataso2 IN ('Eurojackpot') then laskennallinenpelikateeur else null end)/sum(laskennallinenpelikateeur) ejp,
+
+sum(case when tuotehierarkiataso2 IN ('Keno') then laskennallinenpelikateeur else null end)/sum(laskennallinenpelikateeur) keno,
+
+sum(case when tuotehierarkiataso2 IN ('Viking Lotto', 'Jokerit', 'Lomatonnit', 'Naapurit', 'Synttärit', 'Kaikki tai ei mitään') then laskennallinenpelikateeur else null end)/sum(laskennallinenpelikateeur) muut_arvonta,
+
+sum(case when tuotehierarkiataso2 IN ('Muuttuvakertoiminen vedonlyönti', 'Kiinteäkertoiminen vedonlyönti', 'Vakio') 
+then laskennallinenpelikateeur else null end)/sum(laskennallinenpelikateeur) vedonlyonti_ja_vakio,
+
+sum(case when tuotehierarkiataso2 IN ('T-Pelit', 'Muut totopelit') then laskennallinenpelikateeur else null end)/sum(laskennallinenpelikateeur) toto,
+
+sum(case when tuotehierarkiataso2 IN ('Raha-automaatit', 'Pöytäpelit') then laskennallinenpelikateeur else null end)/sum(laskennallinenpelikateeur) kasino_ja_pokeri,
+
+sum(case when tuotehierarkiataso2 IN ('eArvat', 'Bingopelit') then laskennallinenpelikateeur else null end)/sum(laskennallinenpelikateeur) earvat_ja_bingo
+
+FROM VADA.D_ASIAKAS_VADA a
+LEFT JOIN VADA.F_TUNNISTAUTUNUT_VADA tp ON tp.asiakaskey = a.asiakaskey
+LEFT JOIN VADA.D_PAIVA_VADA pvm ON pvm.paivakey = tp.myynti_paivakey
+LEFT JOIN VADA.D_PELI_VADA peli ON peli.pelikey = tp.pelikey
+LEFT JOIN VADA.D_PELIHIERARKIA_VADA ph ON ph.pelihierarkiakey = peli.pelihierarkiakey
+WHERE kuukausikey BETWEEN 201606 AND 201612
+AND asiakastunnisteigs IS NOT NULL
+GROUP BY asiakastunnisteigs
+HAVING sum(case when tuotehierarkiataso2 IN ('Raha-automaatit', 'Pöytäpelit') then laskennallinenpelikateeur else null end) IS NULL OR
+sum(case when tuotehierarkiataso2 IN ('Raha-automaatit', 'Pöytäpelit') then laskennallinenpelikateeur else null end) >= 0),
+
+d2 as(SELECT distinct case when lotto >= 0.8 then asiakastunnisteigs else null end asiakastunnisteigs --VAIHDA HALUTTUUN TUOTERYHMÄÄN
+FROM d)
+
+SELECT kuukausikey, 
+
+sum(laskennallinenpelikateeur)/count(distinct asiakastunnisteigs),
+
+count(distinct asiakastunnisteigs), 
+
+sum(case when tuotehierarkiataso2 IN ('Lotto') then laskennallinenpelikateeur else null end)/sum(laskennallinenpelikateeur) lotto,
+
+sum(case when tuotehierarkiataso2 IN ('Eurojackpot') then laskennallinenpelikateeur else null end)/sum(laskennallinenpelikateeur) ejp,
+
+sum(case when tuotehierarkiataso2 IN ('Keno') 
+then laskennallinenpelikateeur else null end)/sum(laskennallinenpelikateeur) keno,
+
+sum(case when tuotehierarkiataso2 IN ('Synttärit') 
+then laskennallinenpelikateeur else null end)/sum(laskennallinenpelikateeur) synttarit,
+
+sum(case when tuotehierarkiataso2 IN ('Kaikki tai ei mitään') then laskennallinenpelikateeur else null end)/sum(laskennallinenpelikateeur) ktem,
+
+sum(case when tuotehierarkiataso2 IN ('Viking Lotto', 'Jokerit', 'Lomatonnit', 'Naapurit', 'Kaikki tai ei mitään', 'Nopearytmiset arvontapelit') then laskennallinenpelikateeur else null end)/sum(laskennallinenpelikateeur) muut_arvonta,
+
+sum(case when tuotehierarkiataso2 IN ('Muuttuvakertoiminen vedonlyönti', 'Kiinteäkertoiminen vedonlyönti', 'Vakio') 
+then laskennallinenpelikateeur else null end)/sum(laskennallinenpelikateeur) vedonlyonti_ja_vakio,
+
+sum(case when tuotehierarkiataso2 IN ('T-Pelit', 'Muut totopelit') then laskennallinenpelikateeur else null end)/sum(laskennallinenpelikateeur) toto,
+
+sum(case when tuotehierarkiataso2 IN ('eArvat', 'Bingopelit') then laskennallinenpelikateeur else null end)/sum(laskennallinenpelikateeur) earvat_ja_bingo,
+
+sum(case when tuotehierarkiataso2 IN ('Raha-automaatit', 'Pöytäpelit') then laskennallinenpelikateeur else null end)/sum(laskennallinenpelikateeur) kasino_ja_pokeri
+
+FROM VADA.D_ASIAKAS_VADA a
+LEFT JOIN VADA.F_TUNNISTAUTUNUT_VADA tp ON tp.asiakaskey = a.asiakaskey
+LEFT JOIN VADA.D_PAIVA_VADA pvm ON pvm.paivakey = tp.myynti_paivakey
+LEFT JOIN VADA.D_PELI_VADA peli ON peli.pelikey = tp.pelikey
+LEFT JOIN VADA.D_PELIHIERARKIA_VADA ph ON ph.pelihierarkiakey = peli.pelihierarkiakey
+WHERE kuukausikey >= 201701
+AND asiakastunnisteigs IN (SELECT asiakastunnisteigs FROM d2) --AKTIVOI TUOTERYHMÄKOHTAISEEN SEURANTAAN
+--AND asiakastunnisteigs IN (SELECT asiakastunnisteigs FROM d) --AKTIVOI KAIKKIEN SEURANTAAN
+AND kuukausikey < 201803
+GROUP BY kuukausikey
+ORDER BY 1
